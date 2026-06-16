@@ -18,15 +18,32 @@ type Order = {
   subtotal: number;
   discount: number;
   offer: OfferKey | null;
-  tax: number;
+  GST: number;
   total: number;
 };
 
-const TAX_RATE = 0.08; // 8%
+const TAX_RATE = 0.05; // 5%
 const OFFERS = {
-  SAVE10: { label: "10% off", type: "percent" as const, value: 0.1 },
-  FLAT50: { label: "₹50 off", type: "flat" as const, value: 50 },
-  BOGO100: { label: "₹100 off over ₹500", type: "threshold" as const, value: 100, min: 500 },
+  SAVE10: {
+    label: "10% off on orders above ₹999",
+    type: "percent" as const,
+    value: 0.1,
+    min: 1000,
+  },
+
+  FLAT50: {
+    label: "₹50 off on orders above ₹599",
+    type: "threshold" as const,
+    value: 50,
+    min: 600,
+  },
+
+  BOGO15: {
+    label: "₹15 off on orders above ₹199",
+    type: "threshold" as const,
+    value: 15,
+    min: 200,
+  },
 };
 type OfferKey = keyof typeof OFFERS;
 const ORDERS_KEY = "checkout.orders.v1";
@@ -36,20 +53,46 @@ const currency = (n: number) =>
 
 function computeOfferDiscount(key: OfferKey, subtotal: number) {
   const o = OFFERS[key];
-  if (o.type === "percent") return { amount: subtotal * o.value, valid: subtotal > 0 };
-  if (o.type === "flat") return { amount: Math.min(o.value, subtotal), valid: subtotal > 0 };
-  return { amount: subtotal >= o.min ? o.value : 0, valid: subtotal >= o.min };
+
+  if (o.type === "percent") {
+    return {
+      amount: subtotal >= o.min ? subtotal * o.value : 0,
+      valid: subtotal >= o.min,
+    };
+  }
+
+  return {
+    amount: subtotal >= o.min ? o.value : 0,
+    valid: subtotal >= o.min,
+  };
 }
 
 export default function App() {
-  const [items, setItems] = useState<Item[]>([
-    { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
-    { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
-  ]);
+  const [items, setItems] = useState<Item[]>(() => {
+    try {
+      const saved = localStorage.getItem("checkout.cart.v1");
+      return saved ? JSON.parse(saved) : [
+        { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
+        { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
+      ];
+    } catch {
+      return [
+        { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
+        { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
+      ];
+    }
+  });
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [qty, setQty] = useState("1");
-  const [offer, setOffer] = useState<OfferKey | null>(null);
+  const [offer, setOffer] = useState<OfferKey | null>(() => {
+    try {
+      const saved = localStorage.getItem("checkout.offer.v1");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [view, setView] = useState<"cart" | "confirmation">("cart");
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -61,6 +104,18 @@ export default function App() {
       if (raw) setOrders(JSON.parse(raw));
     } catch {}
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("checkout.cart.v1", JSON.stringify(items));
+    } catch {}
+  }, [items]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("checkout.offer.v1", JSON.stringify(offer));
+    } catch {}
+  }, [offer]);
 
   const persistOrders = (next: Order[]) => {
     setOrders(next);
@@ -90,12 +145,12 @@ export default function App() {
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
-  const { subtotal, discount, tax, total } = useMemo(() => {
+  const { subtotal, discount, GST, total } = useMemo(() => {
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
     const discount = offer ? computeOfferDiscount(offer, subtotal).amount : 0;
     const taxable = Math.max(0, subtotal - discount);
-    const tax = taxable * TAX_RATE;
-    return { subtotal, discount, tax, total: taxable + tax };
+    const GST = taxable * TAX_RATE;
+    return { subtotal, discount, GST, total: taxable + GST };
   }, [items, offer]);
 
   const placeOrder = () => {
@@ -107,7 +162,7 @@ export default function App() {
       subtotal,
       discount,
       offer,
-      tax,
+      GST,
       total,
     };
     persistOrders([order, ...orders]);
@@ -252,7 +307,7 @@ export default function App() {
                         <div className="min-w-0">
                           <div className={`font-mono text-sm font-semibold ${disabled ? "text-muted-foreground" : ""}`}>{key}</div>
                           <div className="text-xs text-muted-foreground">
-                            {o.label}{o.type === "threshold" ? ` (min ${currency(o.min)})` : ""}
+                            {o.label}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -272,8 +327,17 @@ export default function App() {
               <h2 className="mb-4 text-lg font-semibold">Bill summary</h2>
               <dl className="space-y-2.5 text-sm">
                 <Row label="Subtotal" value={currency(subtotal)} />
-                <Row label="Discount" value={`− ${currency(discount)}`} muted={discount === 0} accent={discount > 0} />
-                <Row label={`Tax (${(TAX_RATE * 100).toFixed(0)}%)`} value={currency(tax)} />
+<Row
+  label={
+    discount > 0 && offer
+      ? `Discount (${offer})`
+      : "Discount"
+  }
+  value={`− ${currency(discount)}`}
+  muted={discount === 0}
+  accent={discount > 0}
+/>
+                <Row label={`GST (${(TAX_RATE * 100).toFixed(0)}%)`} value={currency(GST)} />
                 <Separator className="my-3" />
                 <div className="flex items-baseline justify-between">
                   <dt className="text-base font-semibold">Total</dt>
@@ -355,6 +419,10 @@ function ConfirmationView({
 
         <Card className="mt-6 p-6">
           <h2 className="mb-4 text-lg font-semibold">Summary</h2>
+          <div className="mb-2 flex items-center justify-between border-b pb-2 text-sm font-semibold text-muted-foreground">
+  <span>Items</span>
+  <span>Price</span>
+</div>
           <ul className="divide-y divide-border">
             {order.items.map((it) => (
               <li key={it.id} className="flex items-center justify-between py-2.5 text-sm">
@@ -377,7 +445,7 @@ function ConfirmationView({
               muted={order.discount === 0}
               accent={order.discount > 0}
             />
-            <Row label={`Tax (${(TAX_RATE * 100).toFixed(0)}%)`} value={currency(order.tax)} />
+            <Row label={`Tax (${(TAX_RATE * 100).toFixed(0)}%)`} value={currency(order.GST)} />
             <Separator className="my-3" />
             <div className="flex items-baseline justify-between">
               <dt className="text-base font-semibold">Total paid</dt>
@@ -389,16 +457,21 @@ function ConfirmationView({
         </Card>
 
         <Card className="mt-6 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Past orders</h2>
-            <span className="ml-auto text-sm text-muted-foreground">{orders.length}</span>
-            {orders.length > 0 && (
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onClearHistory}>
-                Clear
-              </Button>
-            )}
-          </div>
+         <div className="mb-4 flex items-center gap-2">
+  <History className="h-5 w-5 text-primary" />
+  <h2 className="text-lg font-semibold">
+    Past Orders ({orders.length})
+  </h2>
+
+  <Button
+    variant="ghost"
+    size="sm"
+    className="ml-auto text-muted-foreground hover:text-destructive"
+    onClick={onClearHistory}
+  >
+    Clear
+  </Button>
+</div>
           {orders.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">No past orders yet.</p>
           ) : (
@@ -425,8 +498,29 @@ function ConfirmationView({
 function Row({ label, value, muted, accent }: { label: string; value: string; muted?: boolean; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <dt className={muted ? "text-muted-foreground" : ""}>{label}</dt>
-      <dd className={`tabular-nums ${accent ? "text-success font-medium" : muted ? "text-muted-foreground" : ""}`}>{value}</dd>
+      <dt
+        className={
+          accent
+            ? "text-success font-medium"
+            : muted
+            ? "text-muted-foreground"
+            : ""
+        }
+      >
+        {label}
+      </dt>
+
+      <dd
+        className={`tabular-nums ${
+          accent
+            ? "text-success font-medium"
+            : muted
+            ? "text-muted-foreground"
+            : ""
+        }`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
