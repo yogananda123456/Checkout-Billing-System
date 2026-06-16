@@ -71,15 +71,9 @@ export default function App() {
   const [items, setItems] = useState<Item[]>(() => {
     try {
       const saved = localStorage.getItem("checkout.cart.v1");
-      return saved ? JSON.parse(saved) : [
-        { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
-        { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return [
-        { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
-        { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
-      ];
+      return [];
     }
   });
   const [name, setName] = useState("");
@@ -222,7 +216,7 @@ export default function App() {
               <form onSubmit={addItem} className="grid gap-3 sm:grid-cols-[1fr_120px_100px_auto]">
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Cappuccino" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" placeholder="Add item here" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="price">Price (₹)</Label>
