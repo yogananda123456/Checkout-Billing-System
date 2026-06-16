@@ -1,121 +1,89 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
-
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
+    <div className="min-h-screen bg-slate-100 p-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 rounded-2xl bg-white p-8 shadow">
+          <h1 className="text-4xl font-bold text-slate-800">
+            Checkout Billing System
+          </h1>
+
+          <p className="mt-2 text-slate-500">
+            Calculate cart totals, discounts and taxes instantly.
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl bg-white p-6 shadow">
+            <h2 className="mb-4 text-xl font-semibold">
+              Add Item
+            </h2>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+            <div className="space-y-4">
+              <input
+                className="w-full rounded-lg border p-3"
+                placeholder="Item Name"
+              />
+
+              <input
+                className="w-full rounded-lg border p-3"
+                placeholder="Price"
+              />
+
+              <input
+                className="w-full rounded-lg border p-3"
+                placeholder="Quantity"
+              />
+
+              <button
+                className="w-full rounded-lg bg-slate-800 p-3 text-white"
+              >
+                Add Item
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white p-6 shadow">
+            <h2 className="mb-4 text-xl font-semibold">
+              Bill Summary
+            </h2>
+
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>₹0.00</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Discount</span>
+                <span>₹0.00</span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>Tax</span>
+                <span>₹0.00</span>
+              </div>
+
+              <hr />
+
+              <div className="flex justify-between text-xl font-bold">
+                <span>Final Amount</span>
+                <span>₹0.00</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <div className="mt-6 rounded-2xl bg-white p-6 shadow">
+          <h2 className="mb-4 text-xl font-semibold">
+            Cart Items
+          </h2>
+
+          <p className="text-slate-500">
+            No items added yet.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 
