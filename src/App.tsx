@@ -1,5 +1,5 @@
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Plus, Trash2, ShoppingBag, Tag, Receipt, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 type Item = { id: string; name: string; price: number; quantity: number };
 
-const TAX_RATE = 0.08; // 8%
+const TAX_RATE = 0.05; // 5%
 const OFFERS = {
   SAVE10: { label: "10% off", type: "percent" as const, value: 0.1 },
   FLAT50: { label: "₹50 off", type: "flat" as const, value: 50 },
@@ -26,14 +26,30 @@ const currency = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n);
 
 export default function App() {
-  const [items, setItems] = useState<Item[]>([
-    { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
-    { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
-  ]);
+  const [items, setItems] = useState<Item[]>(() => {
+    const saved = localStorage.getItem("cart-items");
+    return saved ? JSON.parse(saved) : [
+      { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
+      { id: crypto.randomUUID(), name: "Bean Bag", price: 1999, quantity: 2 },
+    ];
+  });
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [qty, setQty] = useState("1");
-  const [offer, setOffer] = useState<OfferKey | null>(null);
+  const [offer, setOffer] = useState<OfferKey | null>(() => {
+    const saved = localStorage.getItem("selected-offer");
+    return saved ? (JSON.parse(saved) as OfferKey) : null;
+  });
+
+  // Save items to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("cart-items", JSON.stringify(items));
+  }, [items]);
+
+  // Save offer to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("selected-offer", JSON.stringify(offer));
+  }, [offer]);
 
   const addItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,7 +114,7 @@ export default function App() {
               <form onSubmit={addItem} className="grid gap-3 sm:grid-cols-[1fr_120px_100px_auto]">
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Cappuccino" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" placeholder="Add item here" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="price">Price (₹)</Label>
