@@ -1,6 +1,5 @@
-
-import { useMemo, useState, useEffect } from "react";
-import { Plus, Trash2, ShoppingBag, Tag, Receipt, Minus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, ShoppingBag, Tag, Receipt, Minus, CheckCircle2, History, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,47 +8,64 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-
-
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Item = { id: string; name: string; price: number; quantity: number };
+type Order = {
+  id: string;
+  placedAt: string;
+  items: Item[];
+  subtotal: number;
+  discount: number;
+  offer: OfferKey | null;
+  tax: number;
+  total: number;
+};
 
-const TAX_RATE = 0.05; // 5%
+const TAX_RATE = 0.08; // 8%
 const OFFERS = {
   SAVE10: { label: "10% off", type: "percent" as const, value: 0.1 },
   FLAT50: { label: "₹50 off", type: "flat" as const, value: 50 },
   BOGO100: { label: "₹100 off over ₹500", type: "threshold" as const, value: 100, min: 500 },
 };
 type OfferKey = keyof typeof OFFERS;
+const ORDERS_KEY = "checkout.orders.v1";
 
 const currency = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n);
 
+function computeOfferDiscount(key: OfferKey, subtotal: number) {
+  const o = OFFERS[key];
+  if (o.type === "percent") return { amount: subtotal * o.value, valid: subtotal > 0 };
+  if (o.type === "flat") return { amount: Math.min(o.value, subtotal), valid: subtotal > 0 };
+  return { amount: subtotal >= o.min ? o.value : 0, valid: subtotal >= o.min };
+}
+
 export default function App() {
-  const [items, setItems] = useState<Item[]>(() => {
-    const saved = localStorage.getItem("cart-items");
-    return saved ? JSON.parse(saved) : [
-      { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
-      { id: crypto.randomUUID(), name: "Bean Bag", price: 1999, quantity: 2 },
-    ];
-  });
+  const [items, setItems] = useState<Item[]>([
+    { id: crypto.randomUUID(), name: "Espresso Beans 250g", price: 450, quantity: 1 },
+    { id: crypto.randomUUID(), name: "Ceramic Mug", price: 320, quantity: 2 },
+  ]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [qty, setQty] = useState("1");
-  const [offer, setOffer] = useState<OfferKey | null>(() => {
-    const saved = localStorage.getItem("selected-offer");
-    return saved ? (JSON.parse(saved) as OfferKey) : null;
-  });
+  const [offer, setOffer] = useState<OfferKey | null>(null);
+  const [view, setView] = useState<"cart" | "confirmation">("cart");
+  const [lastOrder, setLastOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // Save items to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem("cart-items", JSON.stringify(items));
-  }, [items]);
+    try {
+      const raw = localStorage.getItem(ORDERS_KEY);
+      if (raw) setOrders(JSON.parse(raw));
+    } catch {}
+  }, []);
 
-  // Save offer to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("selected-offer", JSON.stringify(offer));
-  }, [offer]);
+  const persistOrders = (next: Order[]) => {
+    setOrders(next);
+    try { localStorage.setItem(ORDERS_KEY, JSON.stringify(next)); } catch {}
+  };
 
   const addItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,19 +90,44 @@ export default function App() {
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
 
-  const { subtotal, discount, taxable, tax, total } = useMemo(() => {
+  const { subtotal, discount, tax, total } = useMemo(() => {
     const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-    let discount = 0;
-    if (offer) {
-      const o = OFFERS[offer];
-      if (o.type === "percent") discount = subtotal * o.value;
-      else if (o.type === "flat") discount = Math.min(o.value, subtotal);
-      else if (o.type === "threshold" && subtotal >= o.min) discount = o.value;
-    }
+    const discount = offer ? computeOfferDiscount(offer, subtotal).amount : 0;
     const taxable = Math.max(0, subtotal - discount);
     const tax = taxable * TAX_RATE;
-    return { subtotal, discount, taxable, tax, total: taxable + tax };
+    return { subtotal, discount, tax, total: taxable + tax };
   }, [items, offer]);
+
+  const placeOrder = () => {
+    if (items.length === 0) return;
+    const order: Order = {
+      id: crypto.randomUUID(),
+      placedAt: new Date().toISOString(),
+      items,
+      subtotal,
+      discount,
+      offer,
+      tax,
+      total,
+    };
+    persistOrders([order, ...orders]);
+    setLastOrder(order);
+    setItems([]);
+    setOffer(null);
+    setView("confirmation");
+    toast.success("Order placed!", { description: `Charged ${currency(total)}` });
+  };
+
+  if (view === "confirmation" && lastOrder) {
+    return (
+      <ConfirmationView
+        order={lastOrder}
+        orders={orders}
+        onBack={() => setView("cart")}
+        onClearHistory={() => persistOrders([])}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen px-4 py-10 sm:py-16">
@@ -102,10 +143,22 @@ export default function App() {
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
             Add items, stack an offer, and watch the bill compute itself — taxes included.
           </p>
+          {orders.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4 gap-1.5"
+              onClick={() => {
+                setLastOrder(orders[0]);
+                setView("confirmation");
+              }}
+            >
+              <History className="h-4 w-4" /> View past orders ({orders.length})
+            </Button>
+          )}
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          {/* LEFT: items */}
           <div className="space-y-6">
             <Card className="p-6">
               <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
@@ -114,7 +167,7 @@ export default function App() {
               <form onSubmit={addItem} className="grid gap-3 sm:grid-cols-[1fr_120px_100px_auto]">
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Add item here" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" placeholder="Cappuccino" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="price">Price (₹)</Label>
@@ -171,7 +224,6 @@ export default function App() {
             </Card>
           </div>
 
-          {/* RIGHT: summary */}
           <div className="space-y-6 lg:sticky lg:top-8 self-start">
             <Card className="p-6">
               <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
@@ -180,23 +232,35 @@ export default function App() {
               <div className="space-y-2">
                 {(Object.keys(OFFERS) as OfferKey[]).map((key) => {
                   const o = OFFERS[key];
+                  const { amount, valid } = computeOfferDiscount(key, subtotal);
                   const active = offer === key;
+                  const disabled = !valid;
                   return (
                     <button
                       key={key}
-                      onClick={() => setOffer(active ? null : key)}
+                      onClick={() => !disabled && setOffer(active ? null : key)}
+                      disabled={disabled}
                       className={`w-full rounded-lg border p-3 text-left transition ${
-                        active
+                        disabled
+                          ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-60"
+                          : active
                           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                           : "border-border hover:bg-secondary/60"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-mono text-sm font-semibold">{key}</div>
-                          <div className="text-xs text-muted-foreground">{o.label}{o.type === "threshold" ? ` (min ${currency(o.min)})` : ""}</div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className={`font-mono text-sm font-semibold ${disabled ? "text-muted-foreground" : ""}`}>{key}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {o.label}{o.type === "threshold" ? ` (min ${currency(o.min)})` : ""}
+                          </div>
                         </div>
-                        {active && <Badge>Applied</Badge>}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-sm font-semibold tabular-nums ${disabled ? "text-muted-foreground" : "text-success"}`}>
+                            {disabled ? "—" : `− ${currency(amount)}`}
+                          </span>
+                          {active && !disabled && <Badge>Applied</Badge>}
+                        </div>
                       </div>
                     </button>
                   );
@@ -218,7 +282,7 @@ export default function App() {
                   </dd>
                 </div>
               </dl>
-              <Button className="mt-6 w-full" size="lg" disabled={items.length === 0} onClick={() => toast.success("Order placed!", { description: `Charged ${currency(total)}` })}>
+              <Button className="mt-6 w-full" size="lg" disabled={items.length === 0} onClick={() => setShowConfirm(true)}>
                 Place order
               </Button>
               {discount > 0 && (
@@ -229,6 +293,130 @@ export default function App() {
             </Card>
           </div>
         </div>
+      </div>
+
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm the order?</DialogTitle>
+            <DialogDescription>
+              You are about to place an order for{" "}
+              <span className="font-semibold text-foreground">{currency(total)}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConfirm(false)}>
+              Go Back
+            </Button>
+            <Button
+              onClick={() => {
+                setShowConfirm(false);
+                placeOrder();
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ConfirmationView({
+  order,
+  orders,
+  onBack,
+  onClearHistory,
+}: {
+  order: Order;
+  orders: Order[];
+  onBack: () => void;
+  onClearHistory: () => void;
+}) {
+  return (
+    <div className="min-h-screen px-4 py-10 sm:py-16">
+      <Toaster richColors position="top-center" />
+      <div className="mx-auto max-w-3xl">
+        <Button variant="ghost" size="sm" className="mb-6 gap-1.5" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4" /> Back to checkout
+        </Button>
+
+        <Card className="p-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/10">
+            <CheckCircle2 className="h-8 w-8 text-success animate-tick-pop" />
+          </div>
+          <h1 className="text-3xl font-semibold">Order confirmed</h1>
+          <p className="mt-2 text-muted-foreground">
+            Placed on {new Date(order.placedAt).toLocaleString()}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground font-mono">#{order.id.slice(0, 8)}</p>
+        </Card>
+
+        <Card className="mt-6 p-6">
+          <h2 className="mb-4 text-lg font-semibold">Summary</h2>
+          <ul className="divide-y divide-border">
+            {order.items.map((it) => (
+              <li key={it.id} className="flex items-center justify-between py-2.5 text-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-medium">{it.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {currency(it.price)} × {it.quantity}
+                  </div>
+                </div>
+                <div className="tabular-nums font-semibold">{currency(it.price * it.quantity)}</div>
+              </li>
+            ))}
+          </ul>
+          <Separator className="my-4" />
+          <dl className="space-y-2 text-sm">
+            <Row label="Subtotal" value={currency(order.subtotal)} />
+            <Row
+              label={order.offer ? `Discount (${order.offer})` : "Discount"}
+              value={`− ${currency(order.discount)}`}
+              muted={order.discount === 0}
+              accent={order.discount > 0}
+            />
+            <Row label={`Tax (${(TAX_RATE * 100).toFixed(0)}%)`} value={currency(order.tax)} />
+            <Separator className="my-3" />
+            <div className="flex items-baseline justify-between">
+              <dt className="text-base font-semibold">Total paid</dt>
+              <dd className="font-display text-2xl font-semibold tabular-nums text-primary">
+                {currency(order.total)}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+
+        <Card className="mt-6 p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <History className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Past orders</h2>
+            <span className="ml-auto text-sm text-muted-foreground">{orders.length}</span>
+            {orders.length > 0 && (
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={onClearHistory}>
+                Clear
+              </Button>
+            )}
+          </div>
+          {orders.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No past orders yet.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {orders.map((o) => (
+                <li key={o.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                  <div className="min-w-0">
+                    <div className="font-mono text-xs text-muted-foreground">#{o.id.slice(0, 8)}</div>
+                    <div className="truncate">
+                      {o.items.length} item(s) · {new Date(o.placedAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="tabular-nums font-semibold">{currency(o.total)}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       </div>
     </div>
   );
