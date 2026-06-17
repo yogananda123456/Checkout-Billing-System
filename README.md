@@ -1,73 +1,203 @@
-# React + TypeScript + Vite
+# Checkout Billing System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern and responsive checkout billing application built with **React, TypeScript, Vite, Tailwind CSS, and shadcn/ui**. The application allows users to add items to a cart, apply discount offers, calculate taxes automatically, place orders, and maintain an order history with a clean and intuitive user interface.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Cart Management
 
-## React Compiler
+* Add products with name, price, and quantity
+* Increase or decrease item quantity
+* Remove items from the cart
+* Automatic subtotal calculation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Smart Offers & Discounts
 
-## Expanding the ESLint configuration
+* **SAVE10** – 10% off on orders above ₹999
+* **FLAT50** – ₹50 off on orders above ₹599
+* **BOGO15** – ₹15 off on orders above ₹199
+* Invalid offers are automatically disabled and displayed in grey
+* Applied coupon is highlighted and displayed in the bill summary
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Billing Engine
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+* Real-time subtotal calculation
+* Automatic discount calculation
+* 5% tax calculation
+* Instant final bill generation
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Order Confirmation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+* Confirmation popup before placing an order
+* Detailed order summary page after successful checkout
+* Animated success tick indicator
+* Displays purchased items, pricing details, taxes, discounts, and final amount
+
+### Order History
+
+* Stores previous orders using Local Storage
+* View past orders with timestamps and total amount
+* Clear order history when required
+
+### User Experience
+
+* Fully responsive design
+* Modern UI using shadcn/ui components
+* Toast notifications for user actions
+* Clean invoice-style order summary
+
+---
+
+## Tech Stack
+
+### Frontend
+
+* React
+* TypeScript
+* Vite
+
+### UI & Styling
+
+* Tailwind CSS v4
+* shadcn/ui
+* Radix UI
+* Lucide React Icons
+
+### State Management
+
+* React Hooks (`useState`, `useMemo`, `useEffect`)
+
+### Data Persistence
+
+* Browser Local Storage
+
+---
+
+## Project Structure
+
+```text
+src/
+│
+├── components/
+│   └── ui/
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── dialog.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── separator.tsx
+│       └── sonner.tsx
+│
+├── lib/
+│   └── utils.ts
+│
+├── App.tsx
+├── main.tsx
+└── index.css
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Installation
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Clone the repository:
+
+```bash
+git clone https://github.com/<your-username>/checkout-billing-system.git
+cd checkout-billing-system
 ```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:5173
+```
+
+---
+
+## Build for Production
+
+```bash
+npm run build
+```
+
+Preview production build:
+
+```bash
+npm run preview
+```
+
+---
+
+## Deployment
+
+### Vercel
+
+1. Push the project to GitHub
+2. Import the repository into Vercel
+3. Vercel automatically detects the Vite framework
+4. Deploy
+
+Build Settings:
+
+```text
+Build Command: npm run build
+Output Directory: dist
+Install Command: npm install
+```
+
+---
+
+## Coupon Logic
+
+| Coupon | Condition           | Discount |
+| ------ | ------------------- | -------- |
+| SAVE10 | Order value ≥ ₹1000 | 10% off  |
+| FLAT50 | Order value ≥ ₹600  | ₹50 off  |
+| BOGO15 | Order value ≥ ₹200  | ₹15 off  |
+
+---
+
+## Future Enhancements
+
+* PDF Invoice Generation
+* Customer Information Management
+* Inventory Tracking
+* Backend Integration
+* User Authentication
+* Admin Dashboard
+* Sales Analytics
+* Database Storage
+
+---
+
+## Screenshots
+
+Add screenshots of:
+
+* Cart Page
+* Offers Section
+* Confirmation Popup
+* Order Confirmation Page
+* Order History
+
+---
+
+## Author
+
+**Yogananda G**
+
+Built as a modern checkout and billing system to demonstrate React, TypeScript, state management, UI design, and frontend application development skills.
