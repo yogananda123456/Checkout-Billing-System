@@ -184,15 +184,29 @@ Install Command: npm install
 
 ---
 
-## Screenshots
 
-Add screenshots of:
+## 📸 Application Preview
 
-* Cart Page
-* Offers Section
-* Confirmation Popup
-* Order Confirmation Page
-* Order History
+### Add Item
+<img src="./screenshots/addItem.png" width="900"/>
+
+### Cart
+<img src="./screenshots/cart.png" width="900"/>
+
+### Offers
+<img src="./screenshots/offers.png" width="900"/>
+
+### Bill Summary
+<img src="./screenshots/summary.png" width="900"/>
+
+### Order Confirmation
+<img src="./screenshots/confirmation.png" width="900"/>
+
+### Past Orders
+<img src="./screenshots/pastOrders.png" width="900"/>
+
+### Complete Bill
+<img src="./screenshots/bill.png" width="900"/>
 
 ---
 
